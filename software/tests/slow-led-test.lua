@@ -37,3 +37,5 @@ os.execute('sleep 1')
 for i=1,25 do
   sendBit(1) -- full white
 end
+
+os.execute('sleep 1')
