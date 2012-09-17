@@ -30,10 +30,11 @@
 #include <linux/gpio_dev.h>
 #include <linux/ioctl.h>
 
-const int pause = 2000;     // microseconds
-const int data_pin = 5;
+// GPIO pins to use for driving the LED strip
 const int clock_pin = 4;
+const int data_pin = 5;
 
+// read lines from stdin and send them out as serial SPI data on the I/O pins
 int main(int argc, const char* argv) {
   if (argc > 1) {
     printf("Write colors in format r,g,b,r,g,b,...r,g,b followed by enter.\n"
@@ -41,9 +42,10 @@ int main(int argc, const char* argv) {
     exit(0);
   }
   
-  system("io 0x10000060 0x1f"); // use SPI's I/O pins as GPIO
+  // make sure we can the SPI I/O pins for GPIO (essential for pins 4 & 5!)
+  system("io 0x10000060 0x1f");
 
-  // Try to open the GPIO pins
+  // try to open the GPIO pins
   int fd = open("/dev/gpio", O_RDWR);
   if (fd < 0) {
     perror("/dev/gpio");
@@ -57,8 +59,8 @@ int main(int argc, const char* argv) {
 
   while (!feof(stdin)) {
     int r, g, b;
-    while (scanf("%d,%d,%d", &r, &g, &b) == 3) {
-      // write 24 bits per pixel
+    if (scanf("%d,%d,%d", &r, &g, &b) == 3) {
+      // send out 24 bits for one LED
       long mask, bits = ((long) b << 16) | ((long) g << 8) | r;
       for (mask = 0x800000; mask != 0; mask >>= 1) {
         // set data pin according to the bit in the mask
@@ -67,14 +69,11 @@ int main(int argc, const char* argv) {
         ioctl(fd, GPIO_SET, clock_pin);
         ioctl(fd, GPIO_CLEAR, clock_pin);
       }
-      // keep going as long as more comma-separate values follow
-      if (getchar() != ',')
-        break;
     }
-
-    // We need to have a delay here, a few ms seems to do the job
-    // shorter may be OK as well - need to experiment :(
-    usleep(pause);
+    // insert a delay for the LED strip when the end of line is reached
+    // this will also eat up any errors in the input (i.e. not "r,g,b")
+    if (getchar() != ',')
+      usleep(2000); // microseconds
   }
 
   close(fd);    
