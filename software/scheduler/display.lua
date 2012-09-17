@@ -7,7 +7,7 @@ local leds = 32     -- number of LEDs
 local start = 9*60  -- first LED starts at 9:00
 local limit = 17*60 -- last LED ends at 17:00
 
-local fd = assert(io.popen('ledstrip', 'w'))
+local fd = assert(io.popen('nice --20 ledstrip', 'w'))
 
 -- combine layers and slots into an RGB value to display
 local function combine (state, fromSlot, numSlots)
