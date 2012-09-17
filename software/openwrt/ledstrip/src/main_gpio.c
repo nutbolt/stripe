@@ -27,13 +27,12 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <time.h>
-#include <sys/mman.h>
+#include <linux/gpio_dev.h>
+#include <linux/ioctl.h>
 
 // GPIO pins to use for driving the LED strip
 const int clock_pin = 4;
 const int data_pin = 5;
-const int page_offset = 0x10000000;
-const int page_size = 0x1000;
 
 // read lines from stdin and send them out as serial SPI data on the I/O pins
 int main(int argc, const char* argv) {
@@ -43,32 +42,20 @@ int main(int argc, const char* argv) {
     exit(0);
   }
   
+  // make sure we can the SPI I/O pins for GPIO (essential for pins 4 & 5!)
   system("io 0x10000060 0x1f");
 
-  // try to open the memory device
-  int fd = open("/dev/mem", O_RDWR);
+  // try to open the GPIO pins
+  int fd = open("/dev/gpio", O_RDWR);
   if (fd < 0) {
-    perror("/dev/mem");
+    perror("/dev/gpio");
     exit(1);
   }
-
-  // get a map into raw memory
-  void* mem = mmap(NULL, page_size, PROT_READ|PROT_WRITE,
-                    MAP_SHARED, fd, page_offset);
-  if (mem == MAP_FAILED) {
-    perror("cannot map memory");
-    exit(1);
-  }
-
-#define SET32(o,v) *(long*)((char*) mem + (o)) = v
-#define OR32(o,v) *(long*)((char*) mem + (o)) |= v
-
-  // make sure we can use the SPI I/O pins for GPIO (essential for pins 4 & 5!)
-  SET32(0x60, 0x1f);
 
   // initialize the IO pin direction
-  OR32(0x624, (1 << data_pin) | (1 << clock_pin)); // p.58
-  OR32(0x630, 1 << clock_pin); // p.59, sets clock pin low
+  ioctl(fd, GPIO_DIR_OUT, data_pin);
+  ioctl(fd, GPIO_DIR_OUT, clock_pin);
+  ioctl(fd, GPIO_CLEAR, clock_pin);
 
   while (!feof(stdin)) {
     int r, g, b;
@@ -77,10 +64,10 @@ int main(int argc, const char* argv) {
       long mask, bits = ((long) b << 16) | ((long) g << 8) | r;
       for (mask = 0x800000; mask != 0; mask >>= 1) {
         // set data pin according to the bit in the mask
-        OR32(bits & mask ? 0x62C : 0x630, 1 << data_pin); // p.59
+        ioctl(fd, bits & mask ? GPIO_SET : GPIO_CLEAR, data_pin);
         // toggle the clock pin
-        OR32(0x634, 1 << clock_pin); // p.59
-        OR32(0x634, 1 << clock_pin); // p.59
+        ioctl(fd, GPIO_SET, clock_pin);
+        ioctl(fd, GPIO_CLEAR, clock_pin);
       }
     }
     // insert a delay for the LED strip when the end of line is reached
@@ -89,6 +76,6 @@ int main(int argc, const char* argv) {
       usleep(2000); // microseconds
   }
 
-  munmap(mem, page_size);
+  close(fd);    
   exit(0);
 }
