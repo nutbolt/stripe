@@ -2,23 +2,30 @@
 
 local M = {} -- public module interface
 
-local NLEDS = 32 -- number of LEDs
-local SLOTS = 15 -- minute slots per LED
-local START = 540 -- minutes offset of first LED, i.e. 9:00
+-- specifications of the display
+local leds = 32     -- number of LEDs
+local start = 9*60  -- first LED starts at 9:00
+local limit = 17*60 -- last LED ends at 17:00
+
+local fd = assert(io.popen('ledstrip', 'w'))
 
 -- combine layers and slots into an RGB value to display
 local function combine (state, fromSlot, numSlots)
   return fromSlot % 256, fromSlot % 150, fromSlot % 100 -- dummy code for now
 end
 
--- update the display
+-- update the display, sends one line of r,g,b,... values to ledstrip
 function M.update (state)
-  local s = '> '
-  for i = 1, NLEDS do
-    local r, g, b = combine(state, START + (i - 1) * SLOTS, SLOTS)
-    s = s..r..'/'..g..'/'..b..' ' 
+  local step = math.floor((limit - start) / leds + 0.5)
+  local t = {}
+  for i = 1, leds do
+    local r, g, b = combine(state, start + (i - 1) * step, step)
+    table.insert(t, r)
+    table.insert(t, g)
+    table.insert(t, b)
   end
-  print(s)
+  fd:write(table.concat(t, ',')..'\n')
+  fd:flush()
 end
 
 return M

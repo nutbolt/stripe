@@ -2,6 +2,7 @@
 
 -- all the display-specific code is in a separate module
 local display = require 'display'
+-- local display = require 'display-debug'
 
 local M = {} -- public module interface
 
@@ -21,7 +22,7 @@ function M.sum (a,b) return a+b end
     { alpha=AAA; SLICE-1, ..., SLICE-N }
   where
     AAA is the opacity of this layer (from 0=clear to 1023=opaque)
-    and slices are objects, ordered by offset with non-overlapping ranges
+    and slices are objects defining ranges, ordered by their offset
 - each slice is an object with these fields:
     { offset=OOO, duration=DDD, r=RRR, g=GGG, b=BBB }
   where:
