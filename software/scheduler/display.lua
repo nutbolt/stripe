@@ -29,17 +29,17 @@ function M.update (state)
     table.insert(t, g)
     table.insert(t, b)
   end
-	if spi then
-		-- write one string with binary rgb values
-	  for i,v in ipairs(t) do
-		  t[i] = string.char(v)
-		end
-		fd:write(table.concat(t))
-	else
-	  -- write one line with comma-separated rgb values
-		fd:write(table.concat(t, ',')..'\n')
-	end
-	fd:flush()
+  if spi then
+    -- write one string with binary rgb values
+    for i,v in ipairs(t) do
+      t[i] = string.char(v)
+    end
+    fd:write(table.concat(t))
+  else
+    -- write one line with comma-separated rgb values
+    fd:write(table.concat(t, ',')..'\n')
+  end
+  fd:flush()
 end
 
 return M
