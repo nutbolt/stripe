@@ -43,8 +43,6 @@ int main(int argc, const char* argv) {
     exit(0);
   }
   
-  system("io 0x10000060 0x1f");
-
   // try to open the memory device
   int fd = open("/dev/mem", O_RDWR);
   if (fd < 0) {

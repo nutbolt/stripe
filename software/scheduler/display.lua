@@ -7,7 +7,12 @@ local leds = 32     -- number of LEDs
 local start = 9*60  -- first LED starts at 9:00
 local limit = 17*60 -- last LED ends at 17:00
 
-local fd = assert(io.popen('nice --20 ledstrip', 'w'))
+-- try to open the spi device, fall back to running ledstrip if not available
+local spi = io.open('/dev/spidev0.0', 'wb')
+local fd = spi or assert(io.popen('nice --20 ledstrip', 'w'))
+assert(fd, 'failed to connect to LED strip')
+
+if spi then print('using SPI') end
 
 -- combine layers and slots into an RGB value to display
 local function combine (state, fromSlot, numSlots)
@@ -24,8 +29,17 @@ function M.update (state)
     table.insert(t, g)
     table.insert(t, b)
   end
-  fd:write(table.concat(t, ',')..'\n')
-  fd:flush()
+	if spi then
+		-- write one string with binary rgb values
+	  for i,v in ipairs(t) do
+		  t[i] = string.char(v)
+		end
+		fd:write(table.concat(t))
+	else
+	  -- write one line with comma-separated rgb values
+		fd:write(table.concat(t, ',')..'\n')
+	end
+	fd:flush()
 end
 
 return M
